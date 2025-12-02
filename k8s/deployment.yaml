@@ -1,0 +1,70 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: garage-mqtt-bridge
+  namespace: default  # Change to your namespace
+  labels:
+    app: garage-mqtt-bridge
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: garage-mqtt-bridge
+  template:
+    metadata:
+      labels:
+        app: garage-mqtt-bridge
+    spec:
+      containers:
+      - name: garage-mqtt-bridge
+        image: garage-mqtt-bridge:latest  # Update with your registry
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8080
+          name: http
+        env:
+        - name: MQTT_HOST
+          value: "mqtt.example.com"  # Update with your MQTT broker
+        - name: MQTT_PORT
+          value: "8883"  # Update with your MQTT broker port
+        - name: MQTT_TOPIC
+          value: "garage/trigger"  # Update with your MQTT topic
+        - name: MQTT_PAYLOAD
+          value: "1"  # Update with your desired payload
+        - name: CA_CERT_PATH
+          value: "/certs/ca.crt"
+        - name: CLIENT_CERT_PATH
+          value: "/certs/client.crt"
+        - name: CLIENT_KEY_PATH
+          value: "/certs/client.key"
+        - name: HTTP_PORT
+          value: "8080"
+        - name: RUST_LOG
+          value: "info"
+        volumeMounts:
+        - name: mqtt-certs
+          mountPath: /certs
+          readOnly: true
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        resources:
+          requests:
+            memory: "32Mi"
+            cpu: "50m"
+          limits:
+            memory: "128Mi"
+            cpu: "200m"
+      volumes:
+      - name: mqtt-certs
+        secret:
+          secretName: mqtt-certs
